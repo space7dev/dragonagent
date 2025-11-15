@@ -1777,113 +1777,6 @@ Review the execution trace above to identify:
         return response
 
     @EnhancedToolManager.tool
-    def trace_parser_grammar(self, grammar_rule: str, input_string: str, expected_parse: str, current_parse: str, step_by_step_parsing: list[str]) -> str:
-        '''
-        Specialized tool for debugging parser/grammar issues (like YACC, pyparsing, PLY parsers, etc).
-        Forces systematic analysis of how parser rules match input strings.
-        Use this when fixing bugs in parsers, tokenizers, or grammar-based code.
-        
-        Arguments:
-            grammar_rule: the grammar production rule being analyzed (e.g., "division : term SLASH term")
-            input_string: the exact string being parsed (e.g., "J/m/s/kpc2" or "km/s.Mpc")
-            expected_parse: what the parser SHOULD produce (e.g., "J / (m * s * kpc2)")
-            current_parse: what the parser CURRENTLY produces (wrong output)
-            step_by_step_parsing: how parser processes input token by token (must show each reduction step)
-        
-        Output:
-            Returns formatted analysis showing where parser diverges from expected behavior
-        '''
-        if len(grammar_rule) < 10:
-            return "Error: Provide complete grammar rule with full syntax"
-        
-        if not isinstance(step_by_step_parsing, list) or len(step_by_step_parsing) < 2:
-            return "Error: step_by_step_parsing must be a list with at least 2 parsing steps. Example: ['1. Token DIVIDE found, shift to stack', '2. Reduce by rule division: A/B → A * B^-1', '3. Next token DIVIDE found...']"
-        
-        if expected_parse == current_parse:
-            return "Error: expected_parse and current_parse are identical. If parser is working correctly, you don't need this tool."
-        
-        response = f"""=== Parser Grammar Trace ===
-
-Grammar Rule Being Analyzed:
-────────────────────────────
-{grammar_rule}
-
-Input String: "{input_string}"
-
-Expected Parse Tree/Result:
-───────────────────────────
-{expected_parse}
-
-Current (WRONG) Parse Tree/Result:
-──────────────────────────────────
-{current_parse}
-
-Step-by-Step Token Processing:
-───────────────────────────────
-"""
-        
-        for i, step in enumerate(step_by_step_parsing, 1):
-            response += f"{i}. {step}\n"
-        
-        response += f"""
-
-🔍 Divergence Analysis:
-━━━━━━━━━━━━━━━━━━━━━━
-Compare expected vs current output:
-- Where does parsing diverge?
-- Which grammar rule produces wrong result?
-- Are reductions applied in wrong order?
-- Are operator precedences wrong?
-
-💡 Common Parser Bug Patterns:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. **Left-associative vs right-associative operator confusion**
-   - Left: A/B/C = (A/B)/C = A * C / B²
-   - Right: A/B/C = A/(B*C) [Often correct for units!]
-
-2. **Precedence levels causing wrong reduction order**
-   - Division might reduce before multiplication
-   - Check if parentheses change behavior
-
-3. **Chained operators accumulating incorrectly**
-   - Multiple divisions: J/m/s → Should be J/(m*s) not (J/m)/s
-   - Each division should add to denominator, not nest
-
-4. **Grammar rule applying recursively when it shouldn't**
-   - p[0] = p[1] / p[3] might cause issues if p[3] is already a division
-   - May need to check type of p[3] before dividing
-
-5. **Missing special case handling**
-   - First division vs subsequent divisions
-   - Need different logic when denominator is composite
-
-🎯 Fix Strategy:
-━━━━━━━━━━━━━━━━
-1. Identify which grammar rule reduction is wrong
-2. For chained divisions (A/B/C/D), determine if language treats as:
-   - Left-associative: ((A/B)/C)/D 
-   - Cumulative denominator: A/(B*C*D) ← Usually this for units!
-3. Check if p[3] (right side) is already a division result
-4. If yes, may need to flatten/combine denominators instead of dividing
-5. Test fix with: "A/B", "A/B/C", "A/B/C/D" patterns
-
-✅ Analysis complete. Use this to pinpoint exact grammar rule to fix.
-"""
-        
-        if not hasattr(self, 'parser_traces'):
-            self.parser_traces = []
-        
-        self.parser_traces.append({
-            'grammar_rule': grammar_rule,
-            'input': input_string,
-            'expected': expected_parse,
-            'current': current_parse,
-            'steps': step_by_step_parsing
-        })
-        
-        return response
-
-    @EnhancedToolManager.tool
     def identify_boundary_conditions(self, function_name: str, input_parameter: str, boundaries: list[str], expected_behavior_for_each: list[str], which_boundary_likely_fails: str) -> str:
         '''
         Identifies boundary/edge cases that could break the function.
@@ -2297,7 +2190,6 @@ def fix_task_solve_workflow(problem_statement: str, *, timeout: int, run_id_1: s
             "apply_code_edit",
             "generate_tests",
             "trace_execution",
-            "trace_parser_grammar",
             "identify_boundary_conditions",
             "finish"
         ],
